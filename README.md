@@ -6,7 +6,7 @@ This project provides SDKs generated from the DMI OpenAPI specifications.
 
 ## Documentation
 
-For detailed API documentation, usage examples, and installation instructions, please see the [full documentation site](https://jakob1379.github.io/python-dmi-open-data/). (Replace with your actual docs URL if different).
+For detailed API documentation, usage examples, and installation instructions, please see the [full documentation site](https://python-dmi-open-data.readthedocs.io/en/latest/).
 
 ## Development
 
