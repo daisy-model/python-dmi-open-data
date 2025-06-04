@@ -1,0 +1,9 @@
+# flake8: noqa
+
+# import apis into api package
+from dmi_open_data.forecastdata.api.capabilities_api import CapabilitiesApi
+from dmi_open_data.forecastdata.api.dkss_forecast_data_grib_files_api import DKSSForecastDataGRIBFilesApi
+from dmi_open_data.forecastdata.api.download_forecast_files_api import DownloadForecastFilesApi
+from dmi_open_data.forecastdata.api.harmonie_forecast_data_grib_files_api import HARMONIEForecastDataGRIBFilesApi
+from dmi_open_data.forecastdata.api.wam_forecast_data_grib_files_api import WAMForecastDataGRIBFilesApi
+

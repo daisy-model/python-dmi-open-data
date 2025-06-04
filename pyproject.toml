@@ -1,0 +1,59 @@
+[project]
+name = "dmi-open-data"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "Jakob Guldberg Aaes", email = "jakob1379@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.11.5",
+  "python-dateutil>=2.9.0.post0",
+  "typing-extensions>=4.14.0",
+  "urllib3>=2.4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+  "ipython>=8.37.0",
+  "migrate-to-uv>=0.7.2",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.14",
+  "mkdocstrings>=0.29.1",
+  "openapi-generator-cli>=7.13.0.post0",
+  "poethepoet>=0.34.0",
+  "rich>=14.0.0",
+]
+jga-dev = [
+  "black>=25.1.0",
+  "dap-python>=0.5.0",
+  "debugpy>=1.8.14",
+  "flake8>=7.1.2",
+  "isort>=6.0.1",
+  "mypy>=1.16.0",
+  "python-lsp-server[all]>=1.12.2",
+  "rich>=14.0.0",
+  "ruff>=0.11.12",
+]
+
+[tool.poe.tasks]
+# --- Cleaning Tasks ---
+_clean_mkdocs_site = { cmd = "rm -rf site", help = "Clean MkDocs HTML build output" }
+_clean_sdk_build_artifacts = { cmd = "rm -rf build/*", help = "Clean SDK generation build artifacts" }
+clean = { sequence = [ "_clean_mkdocs_site", "_clean_sdk_build_artifacts", ], help = "Clean all build outputs (MkDocs site and SDK artifacts)" }
+
+# --- SDK Generation ---
+_generate_sdks_and_markdown = { cmd = "./generate-sdk", help = "Internal: Generate SDK Python modules and their Markdown documentation" }
+generate-sdks = { sequence = ["_generate_sdks_and_markdown"], help = "Generate SDK Python modules and their Markdown documentation" }
+
+# --- Documentation Site ---
+docs-build = { cmd = "mkdocs build", help = "Build the HTML documentation site from Markdown files" }
+docs-serve = { cmd = "mkdocs serve --dirtyreload", help = "Serve docs locally with auto-reload on Markdown changes (doesn't regenerate SDKs)" }
+docs-deploy = { cmd = "mkdocs gh-deploy --force", help = "Build and deploy documentation to GitHub Pages" }
+
+# --- Combined Workflows ---
+build-all = { sequence = [ "generate-sdks", "docs-build" ], help = "Generate SDKs & their Markdown, then build the HTML documentation site" }
+

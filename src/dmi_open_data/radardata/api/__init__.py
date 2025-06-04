@@ -1,0 +1,9 @@
+# flake8: noqa
+
+# import apis into api package
+from dmi_open_data.radardata.api.capabilities_api import CapabilitiesApi
+from dmi_open_data.radardata.api.download_radar_files_api import DownloadRadarFilesApi
+from dmi_open_data.radardata.api.radar_data_composite_files_api import RadarDataCompositeFilesApi
+from dmi_open_data.radardata.api.radar_data_pseudo_cappi_files_api import RadarDataPseudoCAPPIFilesApi
+from dmi_open_data.radardata.api.radar_data_volume_files_api import RadarDataVolumeFilesApi
+

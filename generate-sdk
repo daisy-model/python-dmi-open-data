@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# --- Configuration ---
+GIT_USER_ID="jakob1379"
+GIT_REPO_ID="python-dmi-open-data"
+
+# List of OpenAPI specification URLs
+OPENAPI_SPEC_URLS=(
+    "https://dmigw.govcloud.dk/v1/forecastdata/api"
+    "https://dmigw.govcloud.dk/v1/radardata/api"
+    "https://dmigw.govcloud.dk/v2/climateData/api"
+    "https://dmigw.govcloud.dk/v2/lightningdata/api"
+    "https://dmigw.govcloud.dk/v2/metObs/api"
+    "https://dmigw.govcloud.dk/v2/oceanObs/api"
+)
+
+# Base dirs
+PROJECT_SRC_DIR="./src"
+BUILD_DIR="build"
+
+# Name of your main Python package that will contain the submodules
+# e.g., dmi_open_data
+MAIN_PACKAGE_NAME="dmi_open_data"
+
+# Generator to use
+GENERATOR_NAME="python"
+
+# --- End Configuration ---
+
+# Ensure openapi-generator-cli is installed and in PATH
+if ! command -v openapi-generator-cli &> /dev/null; then
+    echo "ERROR: openapi-generator-cli could not be found. Please install it."
+    echo "See: https://openapi-generator.tech/docs/installation"
+    exit 1
+fi
+
+# Ensure awk is available
+if ! command -v awk &> /dev/null; then
+    echo "ERROR: awk could not be found. Please install it."
+    exit 1
+fi
+
+# Path to the main package directory (e.g., ./src/dmi_open_data)
+# This will be the -o for the generator.
+MAIN_PACKAGE_PATH="$PROJECT_SRC_DIR/$MAIN_PACKAGE_NAME"
+echo "Starting SDK generation process..."
+echo "Main package path (-o for generator): $MAIN_PACKAGE_PATH"
+mkdir -p "$BUILD_DIR" "$MAIN_PACKAGE_PATH" "docs"
+
+# Ensure the main package directory is a Python package
+if [ ! -f "$MAIN_PACKAGE_PATH/__init__.py" ]; then
+    echo "Creating $MAIN_PACKAGE_PATH/__init__.py"
+    touch "$MAIN_PACKAGE_PATH/__init__.py"
+fi
+
+for SPEC_URL in "${OPENAPI_SPEC_URLS[@]}"; do
+    echo
+    echo "====================================================="
+    echo "Processing OpenAPI spec: $SPEC_URL"
+    echo "====================================================="
+    
+    API_VERSION=$(echo "$SPEC_URL" | awk -F'/' '{print $(NF-2)}')
+    RAW_API_NAME=$(echo "$SPEC_URL" | awk -F'/' '{print $(NF-1)}')
+
+    if [ -z "$API_VERSION" ] || [ -z "$RAW_API_NAME" ]; then
+        echo "  ERROR: Could not parse API version or name from URL: $SPEC_URL"
+        echo "  Skipping this URL."
+        continue
+    fi
+
+    # Name of the submodule directory to be created (e.g., forecastdata, climatedata)
+    SUBMODULE_DIR_NAME=$(echo "$RAW_API_NAME" | tr '[:upper:]' '[:lower:]')
+
+    # Full path to where this specific submodule will reside
+    # e.g., ./src/dmi_open_data/forecastdata
+    FINAL_SUBMODULE_LOCATION="$MAIN_PACKAGE_PATH/$SUBMODULE_DIR_NAME"
+
+    # For CLI --package-name, reflecting the import path for metadata purposes
+    CLI_PACKAGE_NAME_ARG="$MAIN_PACKAGE_NAME.$SUBMODULE_DIR_NAME"
+    # For CLI --artifact-id
+    CLI_ARTIFACT_ID_ARG="${MAIN_PACKAGE_NAME}-${SUBMODULE_DIR_NAME}-${API_VERSION}"
+
+    echo "  API Version: $API_VERSION"
+    echo "  Raw API Name: $RAW_API_NAME"
+    echo "  Submodule Directory Name (for additionalProperties.packageName): $SUBMODULE_DIR_NAME"
+    echo "  Generator Output Directory (-o): $MAIN_PACKAGE_PATH"
+    echo "  Final location for this submodule: $FINAL_SUBMODULE_LOCATION"
+    echo "  CLI --package-name: $CLI_PACKAGE_NAME_ARG"
+    echo "  CLI --artifact-id: $CLI_ARTIFACT_ID_ARG"
+
+    # Remove the existing submodule directory to ensure a clean generation
+    # This prevents old files from lingering if the generator changes structure.
+    if [ -d "$FINAL_SUBMODULE_LOCATION" ]; then
+        echo "  Removing existing submodule directory: $FINAL_SUBMODULE_LOCATION"
+        rm -rf "$FINAL_SUBMODULE_LOCATION"
+    fi
+    if [ -d "$BUILD_DIR/$CLI_ARTIFACT_ID_ARG" ]; then
+        echo "  Removing existing build: $BUILD_DIR/$CLI_ARTIFACT_ID_ARG"
+        rm -rf "$BUILD_DIR/$CLI_ARTIFACT_ID_ARG"
+    fi
+
+    DOCS_DIR_PATH="$BUILD_DIR/$CLI_ARTIFACT_ID_ARG/docs"
+    
+    COMMAND_ARGS=(
+        openapi-generator-cli generate
+        -i "$SPEC_URL"
+        -g "$GENERATOR_NAME"
+        -o "$BUILD_DIR/$CLI_ARTIFACT_ID_ARG"
+        --package-name "$CLI_PACKAGE_NAME_ARG"
+        --artifact-id "$CLI_ARTIFACT_ID_ARG"
+        # --artifact-version "0.1.0" # Consider how you want to manage SDK versions
+        --additional-properties "hideGenerationTimestamp=true,sortParamsByRequiredFlag=true,sortModelPropertiesByRequiredFlag=true,packageName=$SUBMODULE_DIR_NAME"
+        # Add other common options if needed:
+        --git-user-id "$GIT_USER_ID"
+        --git-repo-id "$GIT_REPO_ID"
+    )
+
+    echo "  Executing command: ${COMMAND_ARGS[*]}"
+
+    if "${COMMAND_ARGS[@]}"; then
+        rsync -r "$BUILD_DIR/$CLI_ARTIFACT_ID_ARG/docs/" "./docs/$SUBMODULE_DIR_NAME/"
+        rsync -r "$BUILD_DIR/$CLI_ARTIFACT_ID_ARG/$MAIN_PACKAGE_NAME/$SUBMODULE_DIR_NAME/" "$FINAL_SUBMODULE_LOCATION"
+        echo "  SUCCESS: SDK for '$RAW_API_NAME ($API_VERSION)' generated successfully in '$FINAL_SUBMODULE_LOCATION'."
+    else
+        echo "  ERROR: Failed to generate SDK for '$RAW_API_NAME ($API_VERSION)'."
+    fi
+done
+
+echo
+echo "====================================================="
+echo "All SDK generation tasks complete."
+echo "====================================================="
